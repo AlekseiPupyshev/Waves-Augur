@@ -40,7 +40,7 @@ class App extends React.Component {
                 };
                 this.baseUri = 'https://testnodes.wavesnodes.com';
                 this.wavelet = 100000000;
-                this.dappaddress = '3N4GgQWCckqUn1H9y8rNRyCXZPkgKTNKznT';
+                this.dappaddress = '3N22gvbTKHefh2qCfkcuaUX1kyv1NPdGGLC';
                 this.explorerUrl = "https://wavesexplorer.com/testnet";
                 this.deposit = this.deposit.bind(this);
                 this.updateValue = this.updateValue.bind(this);
