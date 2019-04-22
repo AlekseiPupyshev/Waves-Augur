@@ -256,6 +256,7 @@ func claimFundsResultNo(marketId: String, account: String) = {
     let currentSharesBalanceKey = marketId + S + callerAdress + S + SHARES
     let currentFreezedBalanceKey = marketId + S + callerAdress + S + FREEZED
     let marketStatusKey = marketId + S + MARKETSTATUS
+    let lastBlockKey = marketId + S + LASTBLOCK
     let marketStatus = match getString(this, marketStatusKey) {
         case a:String => a
         case _ => NEW
@@ -272,8 +273,13 @@ func claimFundsResultNo(marketId: String, account: String) = {
             case a:Int => a
             case _ => 0
         }
-    if (marketStatus != CLOSEDNO)
-        then throw("claimFundsResultNo - wrong market result")
+    
+    let lastblock = match getInteger(this, lastBlockKey) {
+        case a:Int => a
+        case _ => 0
+    }
+    if (marketStatus == CLOSEDYES || height <= lastblock + DEFAULTBLOCKSDELAY )
+        then throw("claimFundsResultNo - wrong market result or time")
     else if (freezedBalance == 0 && sharesBalance == 0)
         then throw("You can't claim funds for market and account")
     else 
