@@ -218,7 +218,7 @@ func reportMarket(marketId: String, result: String) = {
             ])
 }
 @Callable(i)
-func claimFundsResultYes(marketId: String, account: String) {
+func claimFundsResultYes(marketId: String, account: String) = {
     let callerAdress = account
     let currentSharesBalanceKey = marketId + S + callerAdress + S + SHARES
     let currentFreezedBalanceKey = marketId + S + callerAdress + S + FREEZED
@@ -247,11 +247,11 @@ func claimFundsResultYes(marketId: String, account: String) {
             WriteSet([
                 DataEntry(callerAdress, currentAmount + sharesBalance*DEFAULTPRICE + freezedBalance),
                 DataEntry(currentSharesBalanceKey, 0),
-                DataEntry(currentFreezedBalanceKey, 0),
+                DataEntry(currentFreezedBalanceKey, 0)
             ])
 }
 @Callable(i)
-func claimFundsResultNo(marketId: String, account: String) {
+func claimFundsResultNo(marketId: String, account: String) = {
     let callerAdress = account
     let currentSharesBalanceKey = marketId + S + callerAdress + S + SHARES
     let currentFreezedBalanceKey = marketId + S + callerAdress + S + FREEZED
@@ -280,6 +280,6 @@ func claimFundsResultNo(marketId: String, account: String) {
             WriteSet([
                 DataEntry(callerAdress, currentAmount + freezedBalance),
                 DataEntry(currentSharesBalanceKey, 0),
-                DataEntry(currentFreezedBalanceKey, 0),
+                DataEntry(currentFreezedBalanceKey, 0)
             ])
 }
