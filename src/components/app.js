@@ -302,6 +302,7 @@ class App extends React.Component {
                         <br/>
                     </div>
                     </div>
+                        <h1 class="display-5 text-center text-info">Existing Markets</h1>
                         <div className = "itemslist">
                             {this.state.dapp.markets.map((x) => {
                                 return (
