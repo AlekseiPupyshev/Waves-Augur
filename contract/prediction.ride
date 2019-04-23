@@ -4,11 +4,12 @@
 # You can try this contract by following commands in the IDE (ide.wavesplatform.com)
 # Run commands as listed below
 # broadcast(invokeScript({dappAddress: address(env.accounts[6]), call:{function:"createMarket",
-# args:[{type:"string", value: "First Market"}, {type:"string", value: "First Market Desc"}, 
+# args:[{type:"string", value: "First Market"}, {type:"string", value: "First Market Desc"},
 # {type:"string", value: "3N22gvbTKHefh2qCfkcuaUX1kyv1NPdGGLC"}, {type:"integer", value: 3}]}, payment: []}))
-# 
+#
 # broadcast(invokeScript({dappAddress: address(env.accounts[6]), call:{function:"setOrderLimitSell", args:[{type:"string", value: "19_592006_3MqyL7JckZ9hC4G2fU2JPtKSXppQF27VCsr"}, {type:"integer", value: "55"}, {type:"integer", value: 5}]}, payment: []}))
 # broadcast(invokeScript({dappAddress: address(env.accounts[6]), call:{function:"setOrderMarketBuy", args:[{type:"string", value: "19_592006_3MqyL7JckZ9hC4G2fU2JPtKSXppQF27VCsr"}, {type:"integer", value: "55"}, {type:"integer", value: 5}]}, payment: []}))
+# https://waves-prediction-market-demo.herokuapp.com/
 
 {-# STDLIB_VERSION 3 #-}
 {-# CONTENT_TYPE DAPP #-}
@@ -89,6 +90,47 @@ func createMarket(title: String, description: String, oracle: String, interval: 
 }
 
 @Callable(i)
+func setOrderLimitSell(marketId: String, price: Int, volume: Int) = {
+    let currentKey = toBase58String(i.caller.bytes)
+    let currentFreezedBalanceKey = marketId + S + currentKey + S + FREEZED
+    let orderSybKey = ORDER + S + marketId + S + toString(price) + S + toString(volume)
+    let orderKey = orderSybKey + S + ACTIONSELL
+    let orderStatusKey = orderKey + S + ORDERSTATUS
+    let orderOwnerKey = orderKey + S + ORDEROWNER
+    let adjustedAmount = volume*DEFAULTPRICE
+    let currentAmount = match getInteger(this, currentKey) {
+            case a:Int => a
+            case _ => 0
+        }
+    let freezedBalance = match getInteger(this, currentFreezedBalanceKey) {
+            case a:Int => a
+            case _ => 0
+        }
+    let status = match getString(this, orderStatusKey) {
+        case a:String => a
+        case _ => NEW
+    }
+    let lastBlockKey = marketId + S + LASTBLOCK
+    let lastblock = match getInteger(this, lastBlockKey) {
+        case a:Int => a
+        case _ => 0
+    }
+    if (height > lastblock)
+        then throw("Can't create an order after market finished")
+    else if (status == ACTIVE)
+        then throw("An order already exist")
+    else if (currentAmount < adjustedAmount)
+        then throw("Not enough funds")
+    else
+            WriteSet([
+                DataEntry(currentKey, currentAmount - adjustedAmount),
+                DataEntry(currentFreezedBalanceKey, freezedBalance + adjustedAmount),
+                DataEntry(orderStatusKey, ACTIVE),
+                DataEntry(orderOwnerKey, currentKey)
+            ])
+}
+
+@Callable(i)
 func setOrderMarketBuy(marketId: String, price: Int, volume: Int) = {
     let currentKey = toBase58String(i.caller.bytes)
     let currentSharesBalanceKey = marketId + S + currentKey + S + SHARES
@@ -129,58 +171,17 @@ func setOrderMarketBuy(marketId: String, price: Int, volume: Int) = {
     let adjustedAmount = volume*price*(DEFAULTPRICE/100)
     if (height > lastblock)
         then throw("Can't execute an order after market finished")
-    else if (contrStatus != ACTIVE) 
+    else if (contrStatus != ACTIVE)
         then throw("A counter-order doesn't exist yet")
     else if (currentAmount < volume*price)
         then throw("Not enough funds")
-    else 
+    else
             WriteSet([
                 DataEntry(currentKey, currentAmount - adjustedAmount),
                 DataEntry(currentSharesBalanceKey, sharesBalance + volume),
                 DataEntry(contrOrderStatusKey, CLOSED),
                 DataEntry(contrOwner, contrCurrentAmount + adjustedAmount),
                 DataEntry(contrCurrentSharesBalanceKey, contrSharesBalance - volume)
-            ])
-}
-
-@Callable(i)
-func setOrderLimitSell(marketId: String, price: Int, volume: Int) = {
-    let currentKey = toBase58String(i.caller.bytes)
-    let currentFreezedBalanceKey = marketId + S + currentKey + S + FREEZED
-    let orderSybKey = ORDER + S + marketId + S + toString(price) + S + toString(volume)
-    let orderKey = orderSybKey + S + ACTIONSELL
-    let orderStatusKey = orderKey + S + ORDERSTATUS
-    let orderOwnerKey = orderKey + S + ORDEROWNER
-    let adjustedAmount = volume*DEFAULTPRICE
-    let currentAmount = match getInteger(this, currentKey) {
-            case a:Int => a
-            case _ => 0
-        }
-    let freezedBalance = match getInteger(this, currentFreezedBalanceKey) {
-            case a:Int => a
-            case _ => 0
-        }
-    let status = match getString(this, orderStatusKey) {
-        case a:String => a
-        case _ => NEW
-    }
-    let lastBlockKey = marketId + S + LASTBLOCK
-    let lastblock = match getInteger(this, lastBlockKey) {
-        case a:Int => a
-        case _ => 0
-    }
-    if (height > lastblock)
-        then throw("Can't create an order after market finished")
-    else if (status == ACTIVE) 
-        then throw("An order already exist")
-    else if (currentAmount < adjustedAmount)
-        then throw("Not enough funds")
-    else 
-            WriteSet([
-                DataEntry(currentKey, currentAmount - adjustedAmount),
-                DataEntry(currentFreezedBalanceKey, freezedBalance + adjustedAmount),
-                DataEntry(orderStatusKey, ACTIVE),
-                DataEntry(orderOwnerKey, currentKey)
             ])
 }
 
@@ -212,7 +213,7 @@ func reportMarket(marketId: String, result: String) = {
         then throw("Too late to report market")
     else if (result != CLOSEDYES && result != CLOSEDNO)
         then throw("Bad report result format")
-    else 
+    else
             WriteSet([
                 DataEntry(marketStatusKey, result)
             ])
@@ -243,7 +244,7 @@ func claimFundsResultYes(marketId: String, account: String) = {
         then throw("claimFundsResultYes - wrong market result")
     else if (freezedBalance == 0 && sharesBalance == 0)
         then throw("You can't claim funds for market and account")
-    else 
+    else
             WriteSet([
                 DataEntry(callerAdress, currentAmount + sharesBalance*DEFAULTPRICE + freezedBalance),
                 DataEntry(currentSharesBalanceKey, 0),
@@ -273,7 +274,7 @@ func claimFundsResultNo(marketId: String, account: String) = {
             case a:Int => a
             case _ => 0
         }
-    
+
     let lastblock = match getInteger(this, lastBlockKey) {
         case a:Int => a
         case _ => 0
@@ -282,7 +283,7 @@ func claimFundsResultNo(marketId: String, account: String) = {
         then throw("claimFundsResultNo - wrong market result or time")
     else if (freezedBalance == 0 && sharesBalance == 0)
         then throw("You can't claim funds for market and account")
-    else 
+    else
             WriteSet([
                 DataEntry(callerAdress, currentAmount + freezedBalance),
                 DataEntry(currentSharesBalanceKey, 0),
