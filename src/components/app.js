@@ -43,6 +43,7 @@ class App extends React.Component {
                 this.dappaddress = '3Ms97rtzpjdiXioVRR7WPWy73djiJaCHhKJ';
                 this.explorerUrl = "https://wavesexplorer.com/testnet";
                 this.deposit = this.deposit.bind(this);
+                this.withdraw = this.withdraw.bind(this);
                 this.updateValue = this.updateValue.bind(this);
                 this.setOrder = this.setOrder.bind(this);
                 this.sendResult = this.sendResult.bind(this);
@@ -84,7 +85,7 @@ class App extends React.Component {
                       call: {
                           function: "withdraw",
                           args:[
-                              { type:"integer", value: this.state.invest.amount*this.wavelet },
+                              { type:"integer", value: this.state.deposit.amount*this.wavelet },
                           ]
                       },
                       payment: [],
