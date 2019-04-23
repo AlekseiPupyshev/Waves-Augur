@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom";
 import React from 'react';
-import { invokeScript, broadcast } from '@waves/waves-transactions'
+import { invokeScript, broadcast, nodeInteraction } from '@waves/waves-transactions'
 
 class App extends React.Component {
             constructor(props) {
@@ -36,12 +36,17 @@ class App extends React.Component {
                       seed: '',
                       address: '',
                       txid: ''
+                    },
+                    dapp: {
+                        markets: [],
+                        height: 0
                     }
                 };
                 this.baseUri = 'https://testnodes.wavesnodes.com';
                 this.wavelet = 100000000;
                 this.dappaddress = '3Ms97rtzpjdiXioVRR7WPWy73djiJaCHhKJ';
                 this.explorerUrl = "https://wavesexplorer.com/testnet";
+                this.fetchBlockchainState = this.fetchBlockchainState.bind(this);
                 this.deposit = this.deposit.bind(this);
                 this.withdraw = this.withdraw.bind(this);
                 this.updateValue = this.updateValue.bind(this);
@@ -49,6 +54,9 @@ class App extends React.Component {
                 this.sendResult = this.sendResult.bind(this);
                 this.createMarket = this.createMarket.bind(this);
                 this.claim = this.claim.bind(this);
+            }
+            componentDidMount() {
+                window.setInterval(this.fetchBlockchainState, 3000);
             }
             updateValue(scope, key, value) {
               const newState = this.state[scope];
@@ -58,6 +66,45 @@ class App extends React.Component {
                         [scope]: newState
                       }
                 );
+            }
+            fetchBlockchainState(){
+                nodeInteraction.currentHeight(this.baseUri).then((h) => {
+                    window.wavesCurrentH = h;
+                });
+                nodeInteraction.accountData(this.dappaddress, this.baseUri).then((v) => {
+                    window.dAppData = v;
+                    if (v) {
+                        window.dAppDataKeys = Object.keys(v);
+                    }
+                });
+
+                let keys = window.dAppDataKeys;
+                let titles = keys ? keys.filter((x) => {return x.endsWith("_title")}) : [];
+
+                let kTitle = "_title";
+                let kEndBlock = "_lastblock";
+
+                let keySplitter = (x, k) => {return x.split(k)[0]};
+                let mapper = function(x) {
+                    let ans = {key: '', title: '', time: 0};
+                    try {
+                        ans.key = keySplitter(x, kTitle);
+                        ans.title = window.dAppData[x].value;
+                        ans.time = window.dAppData[keySplitter(x, kTitle) + kEndBlock].value
+                    }
+                    catch (e) {
+                        console.log(e);
+                    } finally {
+
+                    }
+                    return ans;
+                };
+                let markets = titles.map(mapper).filter((x) => {return !!x.key});
+
+                window.dAppMarkets = markets;
+                this.updateValue("dapp", "markets", markets);
+                this.updateValue("dapp", "height", window.wavesCurrentH);
+                console.log(this.state.dapp);
             }
             deposit(){
               if (window.confirm("Are you sure you wish to deposit?")) {
@@ -255,6 +302,19 @@ class App extends React.Component {
                         <br/>
                     </div>
                     </div>
+                        <div className = "itemslist">
+                            {this.state.dapp.markets.map((x) => {
+                                return (
+                                    <ul className="list-group list-group-horizontal-sm">
+                                        <li className="list-group-item">{this.state.dapp.height}</li>
+                                        <li className="list-group-item">{x.time - this.state.dapp.height}</li>
+                                        <li className="list-group-item">{x.time}</li>
+                                        <li className="list-group-item">{x.key}</li>
+                                        <li className="list-group-item">{x.title}</li>
+                                    </ul>
+                                )
+                                })}
+                        </div>
                     </div>
                 );
             }
